@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Math FPS: Operasi Rimba (Versi OOP)</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <audio id="audio-menu" loop>
+      <source src="assets/audio/backsound.webm" type="audio/webm" />
+    </audio>
+    <audio id="audio-sore" loop>
+      <source src="assets/audio/forest.mp3" type="audio/mp3" />
+    </audio>
+    <audio id="audio-dingin" loop>
+      <source src="assets/audio/dingin.mp3" type="audio/mp3" />
+    </audio>
+
+    <div id="uiLayer">
+      <div id="damage-overlay"></div>
+      <div id="scope-overlay" class="hidden"></div>
+
+      <button id="musicToggle">🔇</button>
+      <div id="compass-arrow"></div>
+      <div id="crosshair"></div>
+      <div id="stats">
+        🎯 <span id="targetCount">0</span> | ⏱️ <span id="timer">0.00</span>s
+      </div>
+
+      <div id="hp-container">
+        <div id="hp-fill"></div>
+        <div id="hp-text">HP: 3/3</div>
+      </div>
+
+      <div id="touch-controls"></div>
+      <div id="joystick-base"><div id="joystick-stick"></div></div>
+      <div id="fireButton">TEMBAK</div>
+    </div>
+
+    <div id="menu">
+      <h1>OPERASI RIMBA</h1>
+      <div class="guide-box">
+        <h3>PANDUAN MISI</h3>
+        <div class="guide-cols">
+          <div class="guide-col">
+            <h4>📱 HP / TABLET</h4>
+            <ul>
+              <li><b>GERAK:</b> Geser layar kiri.</li>
+              <li><b>BIDIK:</b> Geser layar kanan.</li>
+              <li><b>TEMBAK:</b> Tombol Merah.</li>
+            </ul>
+          </div>
+          <div class="guide-col">
+            <h4>💻 PC / LAPTOP</h4>
+            <ul>
+              <li><b>GERAK:</b> Tombol W, A, S, D.</li>
+              <li><b>BIDIK:</b> Gerakan Mouse.</li>
+              <li><b>TEMBAK:</b> Klik Kiri.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <input
+          type="text"
+          id="playerName"
+          placeholder="KODE NAMA: RANGER"
+          autocomplete="off"
+        />
+
+        <select id="opt-theme">
+          <option value="WARM">☀️ CUACA: SORE (Hangat)</option>
+          <option value="COLD">❄️ CUACA: DINGIN (Berkabut)</option>
+        </select>
+
+        <select id="opt-target">
+          <option value="STATIC">🎯 TARGET: DIAM (Latihan)</option>
+          <option value="MOVING">🏃 TARGET: BERGERAK (Pro)</option>
+        </select>
+
+        <select id="opt-quest">
+          <option value="BASIC">🧮 MISI: ALJABAR DASAR (Awal)</option>
+          <option value="TEXT">📚 MISI: FUNGSI LINEAR (Soal)</option>
+          <option value="GRAPH">📈 MISI: FUNGSI LINEAR (Grafik)</option>
+        </select>
+
+        <button id="btn-play">MULAI MISI</button>
+      </div>
+    </div>
+
+    <div id="container"></div>
+
+    <div id="result-modal" class="hidden">
+      <div class="modal-content">
+        <h2 id="modal-title">MISI SELESAI</h2>
+        <div id="modal-body">Pesan akan muncul di sini.</div>
+        <button id="btn-restart">KEMBALI KE BASE</button>
+      </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
