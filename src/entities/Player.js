@@ -210,6 +210,18 @@ export default class Player {
       },
       { passive: false },
     );
+    const aimBtn = document.getElementById("aimButton");
+    if (aimBtn) {
+      aimBtn.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.toggleScope(); // Memanggil fungsi Scope milikmu
+        },
+        { passive: false },
+      );
+    }
 
     document.body.addEventListener("click", (e) => {
       if (e.target.id === "musicToggle") return;
@@ -228,6 +240,7 @@ export default class Player {
     });
 
     document.addEventListener("mousedown", (e) => {
+      if (e.target.id === "musicToggle") return;
       if (document.pointerLockElement === document.body) {
         if (e.button === 0) {
           // KLIK KIRI (Tembak)
