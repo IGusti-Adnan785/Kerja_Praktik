@@ -261,6 +261,27 @@ export default class Player {
           }
           break;
       }
+
+      if (this.ui && this.ui.btnAim) {
+        this.ui.btnAim.addEventListener(
+          "touchstart",
+          (e) => {
+            e.preventDefault(); // Mencegah zoom layar bawaan browser
+
+            // Toggle status scoping
+            this.isScoped = !this.isScoped;
+            this.targetFov = this.isScoped ? this.scopeFov : this.baseFov;
+
+            // Tampilkan/Sembunyikan Overlay Scope Hitam
+            if (this.isScoped) {
+              this.ui.scopeOverlay.classList.remove("hidden");
+            } else {
+              this.ui.scopeOverlay.classList.add("hidden");
+            }
+          },
+          { passive: false },
+        );
+      }
     };
     document.addEventListener("keydown", (e) => onKey(e, true));
     document.addEventListener("keyup", (e) => onKey(e, false));

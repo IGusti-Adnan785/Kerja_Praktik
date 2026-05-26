@@ -25,6 +25,7 @@ export default class UIManager {
 
     // Reload halaman saat tombol kembali ditekan
     this.btnRestart.onclick = () => location.reload();
+    this.btnAim = document.getElementById("btn-aim");
   }
 
   hideMenu() {

@@ -16,6 +16,24 @@ body {
   user-select: none;
 }
 
+.mobile-btn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px; /* Posisi di kanan bawah */
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid #f1c40f;
+  color: white;
+  font-size: 24px;
+  display: none; /* Sembunyikan di layar PC */
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  pointer-events: auto; /* Penting agar bisa ditekan (touch) */
+}
+
 #musicToggle {
   position: absolute;
   top: 20px;
@@ -463,4 +481,10 @@ select {
 #btn-restart:hover {
   transform: scale(1.05);
   background: #fff;
+}
+
+@media (max-width: 768px) {
+  .mobile-btn {
+    display: flex;
+  }
 }
