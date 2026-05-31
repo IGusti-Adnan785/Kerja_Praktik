@@ -156,6 +156,7 @@ export default class Player {
       },
       { passive: false },
     );
+
     dom.addEventListener(
       "touchmove",
       (e) => {
@@ -183,6 +184,7 @@ export default class Player {
       },
       { passive: false },
     );
+
     const end = (e) => {
       e.preventDefault();
       for (let t of e.changedTouches) {
@@ -198,34 +200,43 @@ export default class Player {
         if (t.identifier === lookId) lookId = null;
       }
     };
+
     dom.addEventListener("touchend", end);
     dom.addEventListener("touchcancel", end);
-    fireBtn.addEventListener(
-      "touchstart",
-      (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.triggerRecoil();
-        onShoot();
-      },
-      { passive: false },
-    );
-    const aimBtn = document.getElementById("aimButton");
+
+    if (fireBtn) {
+        fireBtn.addEventListener(
+          "touchstart",
+          (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.triggerRecoil();
+            onShoot();
+          },
+          { passive: false },
+        );
+    }
+
+    // --- LOGIKA TOMBOL BIDIK (Hanya dieksekusi sekali di awal) ---
+    const aimBtn = document.getElementById("btn-aim") || document.getElementById("aimButton");
     if (aimBtn) {
       aimBtn.addEventListener(
         "touchstart",
         (e) => {
           e.preventDefault();
           e.stopPropagation();
-          this.toggleScope(); // Memanggil fungsi Scope milikmu
+          this.toggleScope(); 
         },
         { passive: false },
       );
     }
 
+    // --- CEGAH TEMBAK/POINTER LOCK SAAT KLIK TOMBOL UI ---
     document.body.addEventListener("click", (e) => {
-      if (e.target.id === "musicToggle") return;
-      if (document.getElementById("menu").classList.contains("hidden"))
+      // Jika yang di-tap adalah sebuah tombol (termasuk tombol UI atau musik), berhentikan eksekusi!
+      if (e.target.tagName === "BUTTON" || e.target.closest("button") || e.target.id === "musicToggle") return;
+      
+      if (document.getElementById("menu") && document.getElementById("menu").classList.contains("hidden"))
         document.body.requestPointerLock();
     });
 
@@ -240,7 +251,9 @@ export default class Player {
     });
 
     document.addEventListener("mousedown", (e) => {
-      if (e.target.id === "musicToggle") return;
+      // Jika yang di-klik adalah tombol UI, JANGAN NEMBAK!
+      if (e.target.tagName === "BUTTON" || e.target.closest("button") || e.target.id === "musicToggle") return;
+
       if (document.pointerLockElement === document.body) {
         if (e.button === 0) {
           // KLIK KIRI (Tembak)
@@ -274,28 +287,8 @@ export default class Player {
           }
           break;
       }
-
-      if (this.ui && this.ui.btnAim) {
-        this.ui.btnAim.addEventListener(
-          "touchstart",
-          (e) => {
-            e.preventDefault(); // Mencegah zoom layar bawaan browser
-
-            // Toggle status scoping
-            this.isScoped = !this.isScoped;
-            this.targetFov = this.isScoped ? this.scopeFov : this.baseFov;
-
-            // Tampilkan/Sembunyikan Overlay Scope Hitam
-            if (this.isScoped) {
-              this.ui.scopeOverlay.classList.remove("hidden");
-            } else {
-              this.ui.scopeOverlay.classList.add("hidden");
-            }
-          },
-          { passive: false },
-        );
-      }
     };
+    
     document.addEventListener("keydown", (e) => onKey(e, true));
     document.addEventListener("keyup", (e) => onKey(e, false));
   }

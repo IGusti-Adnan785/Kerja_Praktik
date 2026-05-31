@@ -45,11 +45,16 @@ export default class GameApp {
       this.startGame(opts);
     };
 
-    window.addEventListener("resize", () => this.onResize());
     this.ui.checkPlatform();
 
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
+
+    window.addEventListener("resize", () => {
+      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+    });
   }
 
   startGame(opts) {
