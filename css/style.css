@@ -729,6 +729,7 @@ body:not(.is-playing) #stats,
 body:not(.is-playing) #crosshair,
 body:not(.is-playing) #hp-fill,
 body:not(.is-playing) #hp-text,
-body:not(.is-playing) [id*="hp"] /* Otomatis menargetkan semua elemen yang ID-nya mengandung kata "hp" */ {
+body:not(.is-playing) #hp-container, /* TAMBAHKAN INI */
+body:not(.is-playing) [id*="hp"] {
   display: none !important;
 }
