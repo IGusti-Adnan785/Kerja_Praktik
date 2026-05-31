@@ -11,14 +11,28 @@ export default class TargetSystem {
     this.audioListener = audioListener; // Ambil telinga pemain dari GameApp
 
     // Buat file suara digital (Dengungan Mengerikan)
+    // Buat file suara digital (Detak Jantung / Langkah Kaki Tegang)
     if (this.audioListener) {
       const ctx = this.audioListener.context;
-      const bufferSize = ctx.sampleRate * 2; // 2 detik loop
+      const bufferSize = ctx.sampleRate * 1.5; // Loop 1.5 detik
       this.humBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const data = this.humBuffer.getChannelData(0);
+      
       for (let i = 0; i < bufferSize; i++) {
-        // Kombinasi suara mesin rendah dan static noise
-        data[i] = Math.sin(i * 0.05) * 0.4 + Math.random() * 0.1;
+        const time = i / ctx.sampleRate; 
+        
+        // Membuat ketukan berulang setiap 0.75 detik
+        const beat = (time % 0.75) / 0.75; 
+        
+        // Decay: Suara keras di awal ketukan, lalu cepat menghilang
+        const decay = Math.max(0, 1 - beat * 6); 
+        
+        // Frekuensi sangat rendah (Bass) yang mengintimidasi + sedikit noise
+        const bass = Math.sin(time * 50 * Math.PI * 2);
+        const noise = (Math.random() - 0.5) * 0.1;
+        
+        // Gabungkan menjadi suara berdenyut
+        data[i] = (bass + noise) * decay * 1.5;
       }
     }
   }
@@ -289,9 +303,11 @@ export default class TargetSystem {
     if (this.audioListener) {
       const sound = new THREE.PositionalAudio(this.audioListener);
       sound.setBuffer(this.humBuffer);
-      sound.setRefDistance(5); // Jarak suara terdengar keras
+      sound.setRefDistance(3); // Jarak suara terdengar keras
       sound.setLoop(true);
+      sound.setRolloffFactor(2);
       sound.setVolume(1.0);
+      sound.setMaxDistance(30);
       sound.play();
       grp.add(sound); // Tempelkan di badan monster
     }

@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Math FPS: Operasi Rimba (Versi OOP)</title>
   <link rel="stylesheet" href="css/style.css" />
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </head>
 
 <body>
@@ -22,7 +23,8 @@
   <div id="uiLayer">
     <div id="damage-overlay"></div>
     <div id="scope-overlay" class="hidden"></div>
-    <button id="btn-aim">🎯 BIDIK</button>
+    <button id="btn-aim" class="hidden">🎯 BIDIK</button>
+    <button id="btn-pause-mobile" class="hidden">⏸️</button>
 
     <button id="musicToggle">🔇</button>
     <div id="compass-arrow"></div>
@@ -42,6 +44,53 @@
     </div>
     <div id="fireButton">TEMBAK</div>
     <div id="aimButton">BIDIK</div>
+  </div>
+  <div id="floating-text-container"></div>
+
+  <div id="story-overlay" class="hidden">
+    <div class="story-content">
+      <h2>TRANSMISI MASUK...</h2>
+      <p id="story-text">
+        Tahun 2045. Sebuah bug fatal pada AI Pembelajaran Matematika telah menciptakan dimensi virtual yang mengurung
+        kesadaran para siswa. <br><br>
+        Kamu dikirim ke dalam sistem "Operasi Rimba" untuk menetralisir anomali ini. Selesaikan persamaannya, hindari
+        penjaga sistem yang error, dan bersihkan dimensi ini!
+      </p>
+      <button id="btn-start-game" class="action-btn">MASUK KE DIMENSI</button>
+    </div>
+  </div>
+
+  <div id="custom-alert-modal" class="hidden">
+    <div class="alert-box">
+      <h2 id="alert-title">PERHATIAN</h2>
+      <p id="alert-desc">Pesan akan muncul di sini.</p>
+      <button id="btn-alert-ok" class="action-btn">MENGERTI</button>
+    </div>
+  </div>
+
+  <div id="pause-menu" class="hidden">
+    <h2>GAME PAUSED</h2>
+    <button id="btn-resume" class="action-btn">LANJUTKAN</button>
+    <button id="btn-quit" class="action-btn">KEMBALI KE MENU</button>
+  </div>
+
+  <div id="certificate-modal" class="hidden">
+    <div id="certificate-box">
+      <h1 style="color: #d4af37; font-family: serif; margin-bottom: 5px;">SERTIFIKAT RANGER</h1>
+      <h3 style="margin-top: 0; color: #aaa;">OPERASI RIMBA SELESAI</h3>
+      <hr style="border-color: #d4af37; width: 80%;">
+      <p>Diberikan Kepada:</p>
+      <h2 id="cert-name" style="color: white; font-size: 28px; text-transform: uppercase;">NAMA PLAYER</h2>
+      <p>Atas keberhasilannya menetralisir anomali matematika dengan catatan:</p>
+      <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; margin: 15px 0;">
+        <p>Waktu Penyelesaian: <b id="cert-time" style="color:#f1c40f">00.00s</b></p>
+        <p>Tingkat Kasta: <b id="cert-rank" style="color:#2ecc71; font-size: 20px;">S - DEWA KALKULUS</b></p>
+      </div>
+      <p style="font-size: 10px; color: #666;">Dicetak secara digital oleh Sistem Pusat AI Nusantara</p>
+    </div>
+    <br>
+    <button id="btn-download-cert" class="action-btn">UNDUH SERTIFIKAT (Gambar)</button>
+    <button id="btn-cert-home" class="action-btn" style="background: #e74c3c;">MENU UTAMA</button>
   </div>
 
   <div id="menu">

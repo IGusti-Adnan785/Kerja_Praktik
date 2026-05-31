@@ -35,15 +35,10 @@ export default class GameApp {
 
     this.player = new Player(
       this.camera,
-      document.getElementById("touch-controls"),
+      document.getElementById("touch-controls") || document.body,
       () => this.shoot(),
       this.ui,
     );
-
-    this.ui.btnPlay.onclick = () => {
-      const opts = this.ui.getOptions();
-      this.startGame(opts);
-    };
 
     this.ui.checkPlatform();
 
@@ -54,24 +49,106 @@ export default class GameApp {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
     });
+
+    if (this.ui.btnPlay) {
+      this.ui.btnPlay.onclick = () => {
+        // Validasi Nama Menggunakan Alert Kustom
+        this.playerName = document.getElementById("playerName").value;
+        if (!this.playerName || this.playerName.trim() === "") {
+            this.showCustomAlert("AKSES DITOLAK", "Kamu belum memasukkan nama!\n\nMohon masukkan nama Ranger terlebih dahulu sebelum memulai misi.");
+            return;
+        }
+
+        this.ui.hideMenu(); 
+        const storyOverlay = document.getElementById("story-overlay");
+        if (storyOverlay) storyOverlay.classList.remove("hidden");
+      };
+    }
+
+    const btnStartGame = document.getElementById("btn-start-game");
+    if (btnStartGame) {
+      btnStartGame.onclick = () => {
+        document.getElementById("story-overlay").classList.add("hidden");
+        const opts = this.ui.getOptions();
+        this.startGame(opts); 
+      };
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Escape" && this.isActive) {
+        this.triggerPause();
+      }
+    });
+
+    const btnPauseMobile = document.getElementById("btn-pause-mobile");
+    if (btnPauseMobile) {
+      btnPauseMobile.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.isActive) this.triggerPause();
+      }, { passive: false });
+    }
+
+    const btnResume = document.getElementById("btn-resume");
+    if (btnResume) {
+      btnResume.onclick = () => {
+        document.getElementById("pause-menu").classList.add("hidden");
+        if (document.getElementById("btn-aim")) document.getElementById("btn-aim").classList.remove("hidden");
+        if (document.getElementById("btn-pause-mobile")) document.getElementById("btn-pause-mobile").classList.remove("hidden");
+        
+        document.body.requestPointerLock();
+        this.isActive = true; 
+      };
+    }
+
+    const btnQuit = document.getElementById("btn-quit");
+    if (btnQuit) {
+      btnQuit.onclick = () => location.reload();
+    }
+  }
+
+  // ===============================================
+  // FUNGSI ALERT KUSTOM (Menggantikan window.alert)
+  // ===============================================
+  showCustomAlert(title, message, onConfirm = null) {
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch(e) {}
+    
+    const modal = document.getElementById("custom-alert-modal");
+    if (modal) {
+      document.getElementById("alert-title").innerText = title;
+      document.getElementById("alert-desc").innerText = message;
+      modal.classList.remove("hidden");
+      
+      document.getElementById("btn-alert-ok").onclick = () => {
+        modal.classList.add("hidden");
+        if (onConfirm) onConfirm();
+      };
+    } else {
+      // Jika HTML lupa dipasang, jadikan bawaan browser sebagai cadangan terakhir
+      alert(`${title}\n\n${message}`);
+      if (onConfirm) onConfirm();
+    }
+  }
+
+  triggerPause() {
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch(e) {}
+    const pauseMenu = document.getElementById("pause-menu");
+    if (pauseMenu) pauseMenu.classList.remove("hidden");
+    this.isActive = false; 
+    
+    if(document.getElementById("btn-aim")) document.getElementById("btn-aim").classList.add("hidden");
+    if(document.getElementById("btn-pause-mobile")) document.getElementById("btn-pause-mobile").classList.add("hidden");
   }
 
   startGame(opts) {
-    const name = this.ui.getPlayerName();
-    if (!name) {
-      alert("MOHON MASUKKAN NAMA RANGER!");
-      return;
-    }
-
-    this.ui.hideMenu();
     this.audio.playGameMode(opts.theme);
 
-    // Bikin "Telinga" pemain untuk 3D Audio
     this.listener = new THREE.AudioListener();
     this.camera.add(this.listener);
     if (this.listener.context.state === "suspended") {
-      this.listener.context.resume(); // Aktifkan Audio Browser
+      this.listener.context.resume();
     }
 
     if (this.world) {
@@ -83,10 +160,8 @@ export default class GameApp {
     this.world = new World(100, opts.theme);
     this.world.scene.add(this.camera);
 
-    // Inisialisasi Particle System
     this.particleSystem = new ParticleSystem(this.world.scene);
 
-    // Kirim Telinga ke TargetSystem
     this.targetSystem = new TargetSystem(this.world.scene, 100, this.listener);
     this.targetSystem.spawnTargets(
       5,
@@ -95,15 +170,17 @@ export default class GameApp {
       opts.questMode,
     );
 
-    // ... (kode posisi kamera dsb tetap sama) ...
     this.camera.position.set(0, 1.7, 0);
     this.player.pitch = 0;
     this.player.yaw = 0;
     this.camera.add(this.player.gunMesh);
 
+    if (document.getElementById("btn-aim")) document.getElementById("btn-aim").classList.remove("hidden");
+    if (document.getElementById("btn-pause-mobile")) document.getElementById("btn-pause-mobile").classList.remove("hidden");
+
     this.isActive = true;
     this.startTime = performance.now();
-    document.body.requestPointerLock();
+    try { document.body.requestPointerLock(); } catch(e) {}
   }
 
   shoot() {
@@ -117,17 +194,13 @@ export default class GameApp {
     for (let hit of hits) {
       const obj = hit.object;
 
-      // Efek Partikel Meleset (Kena Pohon/Tanah)
       if (!obj.userData || !obj.userData.isTarget) {
-        // Munculkan percikan api di titik tembakan
         this.particleSystem.spawn(hit.point, false);
         break;
       }
 
-      // Jika kena Monster
       if (obj.userData && obj.userData.isTarget) {
-        // Munculkan percikan darah!
-        this.particleSystem.spawn(hit.point, true);
+        this.particleSystem.spawn(hit.point, true); 
 
         if (obj.userData.val === obj.userData.corr) {
           this.audio.playHitSound();
@@ -136,13 +209,14 @@ export default class GameApp {
           const fade = setInterval(() => {
             s -= 0.1;
             parent.scale.set(s, s, s);
-            if (s <= 0) {
-              clearInterval(fade);
-            }
+            if (s <= 0) clearInterval(fade);
           }, 20);
 
+          if (this.player.heal) this.player.heal(1);
+          if (this.ui.showFloatingText) this.ui.showFloatingText("+1 HP | BENAR!", "#2ecc71");
+
           const sisa = this.targetSystem.removeTarget(parent);
-          if (sisa <= 0) this.gameOver();
+          if (sisa <= 0) this.gameOver("MISI SELESAI", true); 
         } else {
           obj.material.emissive.setHex(0xff0000);
           setTimeout(() => obj.material.emissive.setHex(0x330000), 300);
@@ -150,26 +224,6 @@ export default class GameApp {
         break;
       }
     }
-  }
-
-  gameOver() {
-    this.isActive = false;
-    document.exitPointerLock();
-    this.audio.playMenuMode();
-    setTimeout(() => {
-      const time = ((performance.now() - this.startTime) / 1000).toFixed(2);
-      alert(
-        `MISI SELESAI!\nRanger: ${this.ui.getPlayerName()}\nWaktu: ${time} detik`,
-      );
-      location.reload();
-    }, 500);
-  }
-
-  onResize() {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
   }
 
   animate() {
@@ -191,27 +245,60 @@ export default class GameApp {
       );
       this.targetSystem.update(delta, this.camera.position, this.player);
 
-      // UPDATE PARTIKEL
       this.particleSystem.update(delta);
 
       this.renderer.render(this.world.scene, this.camera);
 
-      if (this.player.isDead) {
-        this.gameOver("DI BUNUH MONSTER!");
+      if (this.targetSystem.targets.length === 0 && this.isActive) {
+        this.gameOver("MISI SELESAI", true);
+      }
+
+      if (this.player.isDead && this.isActive) {
+        this.gameOver("DI BUNUH MONSTER!", false);
       }
     }
   }
 
-  // UPDATE fungsi gameOver untuk menerima alasan mati
-  gameOver(reason = "MISI SELESAI") {
-    this.isActive = false;
-    document.exitPointerLock();
-    this.audio.playMenuMode();
+  gameOver(reason = "MISI SELESAI", isVictory = false) {
+    this.isActive = false; 
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch(e) {}
 
-    // Memunculkan Modal Custom (Tanpa setTimeout agar muncul seketika)
-    const time = ((performance.now() - this.startTime) / 1000).toFixed(2);
-    const isVictory = reason === "MISI SELESAI";
+    if (document.getElementById("btn-aim")) document.getElementById("btn-aim").classList.add("hidden");
+    if (document.getElementById("btn-pause-mobile")) document.getElementById("btn-pause-mobile").classList.add("hidden");
 
-    this.ui.showResultModal(reason, this.ui.getPlayerName(), time, isVictory);
+    if (this.audio && this.audio.playMenuMode) this.audio.playMenuMode();
+
+    const elapsed = ((performance.now() - this.startTime) / 1000).toFixed(2);
+
+    // MENGGUNAKAN ALERT KUSTOM JIKA UI GAGAL DIMUAT
+    if (isVictory) {
+      try {
+        if (this.ui.showVictoryCertificate) {
+          this.ui.showVictoryCertificate(this.playerName, elapsed);
+        } else {
+          throw new Error("Sertifikat");
+        }
+      } catch (err) {
+        this.showCustomAlert(
+          "MISI SELESAI!", 
+          `Ranger: ${this.playerName}\nWaktu: ${elapsed} detik\n\n(Catatan: UI Sertifikat belum terpasang di UIManager)`, 
+          () => location.reload()
+        );
+      }
+    } else {
+      try {
+        if (this.ui.showGameOver) {
+          this.ui.showGameOver(this.playerName, reason, elapsed);
+        } else {
+          throw new Error("Modal Kalah");
+        }
+      } catch (err) {
+        this.showCustomAlert(
+          "GAME OVER!", 
+          `Penyebab: ${reason}\nWaktu Bertahan: ${elapsed} detik`, 
+          () => location.reload()
+        );
+      }
+    }
   }
 }

@@ -37,6 +37,13 @@ export default class Player {
     return false;
   }
 
+  // TAMBAHKAN FUNGSI INI DI BAWAH takeDamage()
+  heal(amount = 1) {
+    if (this.isDead || this.hp >= this.maxHp) return;
+    this.hp = Math.min(this.maxHp, this.hp + amount);
+    this.ui.updateHP(this.hp, this.maxHp);
+  }
+
   createWeapon() {
     const bodyMat = new THREE.MeshStandardMaterial({
       color: 0x1a1a1a,
@@ -205,27 +212,29 @@ export default class Player {
     dom.addEventListener("touchcancel", end);
 
     if (fireBtn) {
-        fireBtn.addEventListener(
-          "touchstart",
-          (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.triggerRecoil();
-            onShoot();
-          },
-          { passive: false },
-        );
+      fireBtn.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.triggerRecoil();
+          onShoot();
+        },
+        { passive: false },
+      );
     }
 
     // --- LOGIKA TOMBOL BIDIK (Hanya dieksekusi sekali di awal) ---
-    const aimBtn = document.getElementById("btn-aim") || document.getElementById("aimButton");
+    const aimBtn =
+      document.getElementById("btn-aim") ||
+      document.getElementById("aimButton");
     if (aimBtn) {
       aimBtn.addEventListener(
         "touchstart",
         (e) => {
           e.preventDefault();
           e.stopPropagation();
-          this.toggleScope(); 
+          this.toggleScope();
         },
         { passive: false },
       );
@@ -234,9 +243,17 @@ export default class Player {
     // --- CEGAH TEMBAK/POINTER LOCK SAAT KLIK TOMBOL UI ---
     document.body.addEventListener("click", (e) => {
       // Jika yang di-tap adalah sebuah tombol (termasuk tombol UI atau musik), berhentikan eksekusi!
-      if (e.target.tagName === "BUTTON" || e.target.closest("button") || e.target.id === "musicToggle") return;
-      
-      if (document.getElementById("menu") && document.getElementById("menu").classList.contains("hidden"))
+      if (
+        e.target.tagName === "BUTTON" ||
+        e.target.closest("button") ||
+        e.target.id === "musicToggle"
+      )
+        return;
+
+      if (
+        document.getElementById("menu") &&
+        document.getElementById("menu").classList.contains("hidden")
+      )
         document.body.requestPointerLock();
     });
 
@@ -252,7 +269,12 @@ export default class Player {
 
     document.addEventListener("mousedown", (e) => {
       // Jika yang di-klik adalah tombol UI, JANGAN NEMBAK!
-      if (e.target.tagName === "BUTTON" || e.target.closest("button") || e.target.id === "musicToggle") return;
+      if (
+        e.target.tagName === "BUTTON" ||
+        e.target.closest("button") ||
+        e.target.id === "musicToggle"
+      )
+        return;
 
       if (document.pointerLockElement === document.body) {
         if (e.button === 0) {
@@ -288,7 +310,7 @@ export default class Player {
           break;
       }
     };
-    
+
     document.addEventListener("keydown", (e) => onKey(e, true));
     document.addEventListener("keyup", (e) => onKey(e, false));
   }
