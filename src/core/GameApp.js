@@ -57,11 +57,14 @@ export default class GameApp {
         // Validasi Nama Menggunakan Alert Kustom
         this.playerName = document.getElementById("playerName").value;
         if (!this.playerName || this.playerName.trim() === "") {
-            this.showCustomAlert("AKSES DITOLAK", "Kamu belum memasukkan nama!\n\nMohon masukkan nama Ranger terlebih dahulu sebelum memulai misi.");
-            return;
+          this.showCustomAlert(
+            "AKSES DITOLAK",
+            "Kamu belum memasukkan nama!\n\nMohon masukkan nama Ranger terlebih dahulu sebelum memulai misi.",
+          );
+          return;
         }
 
-        this.ui.hideMenu(); 
+        this.ui.hideMenu();
         const storyOverlay = document.getElementById("story-overlay");
         if (storyOverlay) storyOverlay.classList.remove("hidden");
       };
@@ -72,7 +75,7 @@ export default class GameApp {
       btnStartGame.onclick = () => {
         document.getElementById("story-overlay").classList.add("hidden");
         const opts = this.ui.getOptions();
-        this.startGame(opts); 
+        this.startGame(opts);
       };
     }
 
@@ -84,22 +87,30 @@ export default class GameApp {
 
     const btnPauseMobile = document.getElementById("btn-pause-mobile");
     if (btnPauseMobile) {
-      btnPauseMobile.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (this.isActive) this.triggerPause();
-      }, { passive: false });
+      btnPauseMobile.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (this.isActive) this.triggerPause();
+        },
+        { passive: false },
+      );
     }
 
     const btnResume = document.getElementById("btn-resume");
     if (btnResume) {
       btnResume.onclick = () => {
         document.getElementById("pause-menu").classList.add("hidden");
-        if (document.getElementById("btn-aim")) document.getElementById("btn-aim").classList.remove("hidden");
-        if (document.getElementById("btn-pause-mobile")) document.getElementById("btn-pause-mobile").classList.remove("hidden");
-        
+        if (document.getElementById("btn-aim"))
+          document.getElementById("btn-aim").classList.remove("hidden");
+        if (document.getElementById("btn-pause-mobile"))
+          document
+            .getElementById("btn-pause-mobile")
+            .classList.remove("hidden");
+
         document.body.requestPointerLock();
-        this.isActive = true; 
+        this.isActive = true;
       };
     }
 
@@ -113,14 +124,16 @@ export default class GameApp {
   // FUNGSI ALERT KUSTOM (Menggantikan window.alert)
   // ===============================================
   showCustomAlert(title, message, onConfirm = null) {
-    try { if (document.pointerLockElement) document.exitPointerLock(); } catch(e) {}
-    
+    try {
+      if (document.pointerLockElement) document.exitPointerLock();
+    } catch (e) {}
+
     const modal = document.getElementById("custom-alert-modal");
     if (modal) {
       document.getElementById("alert-title").innerText = title;
       document.getElementById("alert-desc").innerText = message;
       modal.classList.remove("hidden");
-      
+
       document.getElementById("btn-alert-ok").onclick = () => {
         modal.classList.add("hidden");
         if (onConfirm) onConfirm();
@@ -133,13 +146,17 @@ export default class GameApp {
   }
 
   triggerPause() {
-    try { if (document.pointerLockElement) document.exitPointerLock(); } catch(e) {}
+    try {
+      if (document.pointerLockElement) document.exitPointerLock();
+    } catch (e) {}
     const pauseMenu = document.getElementById("pause-menu");
     if (pauseMenu) pauseMenu.classList.remove("hidden");
-    this.isActive = false; 
-    
-    if(document.getElementById("btn-aim")) document.getElementById("btn-aim").classList.add("hidden");
-    if(document.getElementById("btn-pause-mobile")) document.getElementById("btn-pause-mobile").classList.add("hidden");
+    this.isActive = false;
+
+    if (document.getElementById("btn-aim"))
+      document.getElementById("btn-aim").classList.add("hidden");
+    if (document.getElementById("btn-pause-mobile"))
+      document.getElementById("btn-pause-mobile").classList.add("hidden");
   }
 
   startGame(opts) {
@@ -175,12 +192,18 @@ export default class GameApp {
     this.player.yaw = 0;
     this.camera.add(this.player.gunMesh);
 
-    if (document.getElementById("btn-aim")) document.getElementById("btn-aim").classList.remove("hidden");
-    if (document.getElementById("btn-pause-mobile")) document.getElementById("btn-pause-mobile").classList.remove("hidden");
+    if (document.getElementById("btn-aim"))
+      document.getElementById("btn-aim").classList.remove("hidden");
+    if (document.getElementById("btn-pause-mobile"))
+      document.getElementById("btn-pause-mobile").classList.remove("hidden");
 
+    // Memunculkan HUD Game
+    document.body.classList.add("is-playing");
     this.isActive = true;
     this.startTime = performance.now();
-    try { document.body.requestPointerLock(); } catch(e) {}
+    try {
+      document.body.requestPointerLock();
+    } catch (e) {}
   }
 
   shoot() {
@@ -200,7 +223,7 @@ export default class GameApp {
       }
 
       if (obj.userData && obj.userData.isTarget) {
-        this.particleSystem.spawn(hit.point, true); 
+        this.particleSystem.spawn(hit.point, true);
 
         if (obj.userData.val === obj.userData.corr) {
           this.audio.playHitSound();
@@ -213,10 +236,11 @@ export default class GameApp {
           }, 20);
 
           if (this.player.heal) this.player.heal(1);
-          if (this.ui.showFloatingText) this.ui.showFloatingText("+1 HP | BENAR!", "#2ecc71");
+          if (this.ui.showFloatingText)
+            this.ui.showFloatingText("+1 HP | BENAR!", "#2ecc71");
 
           const sisa = this.targetSystem.removeTarget(parent);
-          if (sisa <= 0) this.gameOver("MISI SELESAI", true); 
+          if (sisa <= 0) this.gameOver("MISI SELESAI", true);
         } else {
           obj.material.emissive.setHex(0xff0000);
           setTimeout(() => obj.material.emissive.setHex(0x330000), 300);
@@ -260,11 +284,17 @@ export default class GameApp {
   }
 
   gameOver(reason = "MISI SELESAI", isVictory = false) {
-    this.isActive = false; 
-    try { if (document.pointerLockElement) document.exitPointerLock(); } catch(e) {}
+    // Menyembunyikan HUD Game
+    document.body.classList.remove("is-playing");
+    this.isActive = false;
+    try {
+      if (document.pointerLockElement) document.exitPointerLock();
+    } catch (e) {}
 
-    if (document.getElementById("btn-aim")) document.getElementById("btn-aim").classList.add("hidden");
-    if (document.getElementById("btn-pause-mobile")) document.getElementById("btn-pause-mobile").classList.add("hidden");
+    if (document.getElementById("btn-aim"))
+      document.getElementById("btn-aim").classList.add("hidden");
+    if (document.getElementById("btn-pause-mobile"))
+      document.getElementById("btn-pause-mobile").classList.add("hidden");
 
     if (this.audio && this.audio.playMenuMode) this.audio.playMenuMode();
 
@@ -280,9 +310,9 @@ export default class GameApp {
         }
       } catch (err) {
         this.showCustomAlert(
-          "MISI SELESAI!", 
-          `Ranger: ${this.playerName}\nWaktu: ${elapsed} detik\n\n(Catatan: UI Sertifikat belum terpasang di UIManager)`, 
-          () => location.reload()
+          "MISI SELESAI!",
+          `Ranger: ${this.playerName}\nWaktu: ${elapsed} detik\n\n(Catatan: UI Sertifikat belum terpasang di UIManager)`,
+          () => location.reload(),
         );
       }
     } else {
@@ -294,9 +324,9 @@ export default class GameApp {
         }
       } catch (err) {
         this.showCustomAlert(
-          "GAME OVER!", 
-          `Penyebab: ${reason}\nWaktu Bertahan: ${elapsed} detik`, 
-          () => location.reload()
+          "GAME OVER!",
+          `Penyebab: ${reason}\nWaktu Bertahan: ${elapsed} detik`,
+          () => location.reload(),
         );
       }
     }

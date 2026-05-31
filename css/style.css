@@ -706,3 +706,29 @@ canvas {
   margin-bottom: 25px;
   line-height: 1.5;
 }
+
+/* --- PERBAIKAN MODAL SERTIFIKAT UNTUK LAYAR HP --- */
+#certificate-modal {
+  justify-content: flex-start !important; /* Mencegah bagian atas terpotong */
+  overflow-y: auto !important; /* Menghidupkan fungsi scroll */
+  padding: 30px 0; /* Memberi ruang napas di atas dan bawah */
+}
+
+#certificate-box {
+  margin-top: auto; 
+  transform: scale(0.85); /* Mengecilkan ukuran sertifikat 15% di HP */
+  transform-origin: top center;
+}
+
+#btn-cert-home {
+  margin-bottom: 50px; /* Memberikan ruang lebih di bawah tombol agar tidak mentok saat di-scroll */
+}
+
+/* --- SEMBUNYIKAN HUD SAAT DI MENU UTAMA --- */
+body:not(.is-playing) #stats,
+body:not(.is-playing) #crosshair,
+body:not(.is-playing) #hp-fill,
+body:not(.is-playing) #hp-text,
+body:not(.is-playing) [id*="hp"] /* Otomatis menargetkan semua elemen yang ID-nya mengandung kata "hp" */ {
+  display: none !important;
+}
