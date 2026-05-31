@@ -733,3 +733,34 @@ body:not(.is-playing) #hp-container, /* TAMBAHKAN INI */
 body:not(.is-playing) [id*="hp"] {
   display: none !important;
 }
+
+#orientation-alert {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100dvh;
+  background: #000;
+  z-index: 99999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  text-align: center;
+}
+
+.rotate-icon {
+  font-size: 50px;
+  margin-top: 20px;
+  animation: rotateAni 2s infinite linear;
+}
+
+@keyframes rotateAni {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(90deg); }
+}
+
+/* Logic: Tampilkan hanya jika posisi Portrait */
+@media screen and (orientation: portrait) {
+  #orientation-alert { display: flex !important; }
+}
+@media screen and (orientation: landscape) {
+  #orientation-alert { display: none !important; }
+}
