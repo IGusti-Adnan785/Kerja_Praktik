@@ -1,6 +1,11 @@
 export default class AudioController {
   constructor() {
-    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.AudioContextClass =
+      window.AudioContext || window.webkitAudioContext;
+    if (this.AudioContextClass) {
+      this.ctx = new this.AudioContextClass();
+    }
+
     this.bgmMenu = document.getElementById("audio-menu");
     this.bgmSore = document.getElementById("audio-sore");
     this.bgmDingin = document.getElementById("audio-dingin");
@@ -10,14 +15,26 @@ export default class AudioController {
     this.currentState = "MENU";
     this.currentTheme = "WARM";
 
-    this.toggleBtn.onclick = (e) => {
-      e.stopPropagation();
-      this.toggleMusic();
-    };
-    this.gunBuffer = this.createNoiseBuffer();
+    if (this.toggleBtn) {
+      this.toggleBtn.onclick = (e) => {
+        e.stopPropagation();
+        this.toggleMusic();
+      };
+    }
+
+    if (this.ctx) {
+      this.gunBuffer = this.createNoiseBuffer();
+    }
+  }
+
+  ensureContextResumed() {
+    if (this.ctx && this.ctx.state === "suspended") {
+      this.ctx.resume().catch(() => {});
+    }
   }
 
   createNoiseBuffer() {
+    if (!this.ctx) return null;
     const bufferSize = this.ctx.sampleRate * 2.0;
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -26,36 +43,42 @@ export default class AudioController {
   }
 
   toggleMusic() {
-    if (this.ctx.state === "suspended") this.ctx.resume();
+    this.ensureContextResumed();
     this.isPlaying = !this.isPlaying;
     this.updateTrackState();
   }
 
   updateTrackState() {
     if (this.isPlaying) {
-      this.toggleBtn.innerText = "🔊";
+      if (this.toggleBtn) this.toggleBtn.innerText = "🔊";
       if (this.currentState === "MENU") {
-        this.bgmMenu.play().catch(() => {});
-        this.bgmSore.pause();
-        this.bgmSore.currentTime = 0;
-        this.bgmDingin.pause();
-        this.bgmDingin.currentTime = 0;
-      } else if (this.currentState === "GAME") {
-        this.bgmMenu.pause();
-        this.bgmMenu.currentTime = 0;
-        if (this.currentTheme === "WARM") {
-          this.bgmSore.play().catch(() => {});
-          this.bgmDingin.pause();
-        } else {
-          this.bgmDingin.play().catch(() => {});
+        if (this.bgmMenu) this.bgmMenu.play().catch(() => {});
+        if (this.bgmSore) {
           this.bgmSore.pause();
+          this.bgmSore.currentTime = 0;
+        }
+        if (this.bgmDingin) {
+          this.bgmDingin.pause();
+          this.bgmDingin.currentTime = 0;
+        }
+      } else if (this.currentState === "GAME") {
+        if (this.bgmMenu) {
+          this.bgmMenu.pause();
+          this.bgmMenu.currentTime = 0;
+        }
+        if (this.currentTheme === "WARM") {
+          if (this.bgmSore) this.bgmSore.play().catch(() => {});
+          if (this.bgmDingin) this.bgmDingin.pause();
+        } else {
+          if (this.bgmDingin) this.bgmDingin.play().catch(() => {});
+          if (this.bgmSore) this.bgmSore.pause();
         }
       }
     } else {
-      this.toggleBtn.innerText = "🔇";
-      this.bgmMenu.pause();
-      this.bgmSore.pause();
-      this.bgmDingin.pause();
+      if (this.toggleBtn) this.toggleBtn.innerText = "🔇";
+      if (this.bgmMenu) this.bgmMenu.pause();
+      if (this.bgmSore) this.bgmSore.pause();
+      if (this.bgmDingin) this.bgmDingin.pause();
     }
   }
 
@@ -72,45 +95,72 @@ export default class AudioController {
     this.currentTheme = theme;
     if (!this.isPlaying) {
       this.isPlaying = true;
-      if (this.ctx.state === "suspended") this.ctx.resume();
     }
+    this.ensureContextResumed();
     this.updateTrackState();
   }
 
   playGunShot() {
-    if (this.ctx.state === "suspended") this.ctx.resume();
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = this.gunBuffer;
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 1000;
-    const env = this.ctx.createGain();
-    noise.connect(filter);
-    filter.connect(env);
-    env.connect(this.ctx.destination);
-    const t = this.ctx.currentTime;
-    env.gain.setValueAtTime(0, t);
-    env.gain.linearRampToValueAtTime(1, t + 0.01);
-    env.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-    noise.start(t);
-    noise.stop(t + 0.2);
+    if (!this.ctx || !this.gunBuffer) return;
+    this.ensureContextResumed();
+
+    try {
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = this.gunBuffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 1000;
+
+      const env = this.ctx.createGain();
+      noise.connect(filter);
+      filter.connect(env);
+      env.connect(this.ctx.destination);
+
+      const t = this.ctx.currentTime;
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(1, t + 0.01);
+      env.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+
+      noise.start(t);
+      noise.stop(t + 0.2);
+
+      // Pembersihan node audio dari memori
+      noise.onended = () => {
+        noise.disconnect();
+        filter.disconnect();
+        env.disconnect();
+      };
+    } catch (e) {}
   }
 
   playHitSound() {
-    if (this.ctx.state === "suspended") this.ctx.resume();
-    const osc = this.ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(800, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(
-      1200,
-      this.ctx.currentTime + 0.1,
-    );
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.3, this.ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
-    osc.connect(g);
-    g.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.3);
+    if (!this.ctx) return;
+    this.ensureContextResumed();
+
+    try {
+      const osc = this.ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(
+        1200,
+        this.ctx.currentTime + 0.1,
+      );
+
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.3, this.ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+
+      osc.connect(g);
+      g.connect(this.ctx.destination);
+
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.3);
+
+      osc.onended = () => {
+        osc.disconnect();
+        g.disconnect();
+      };
+    } catch (e) {}
   }
 }

@@ -12,19 +12,26 @@ export default class GameApp {
     this.audio = new AudioController();
     this.audio.playMenuMode();
 
+    this.isActive = false;
+    this.isGameOverProcessed = false;
+
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: "high-performance",
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Pixel ratio max 2 untuk hemat GPU
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputEncoding = THREE.sRGBEncoding;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
 
-    document.getElementById("container").appendChild(this.renderer.domElement);
+    const container = document.getElementById("container");
+    if (container) {
+      container.innerHTML = "";
+      container.appendChild(this.renderer.domElement);
+    }
 
     this.camera = new THREE.PerspectiveCamera(
       70,
@@ -49,12 +56,12 @@ export default class GameApp {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(window.innerWidth, window.innerHeight);
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     });
 
     if (this.ui.btnPlay) {
       this.ui.btnPlay.onclick = () => {
-        // Validasi Nama Menggunakan Alert Kustom
+        this.audio.ensureContextResumed();
         this.playerName = document.getElementById("playerName").value;
         if (!this.playerName || this.playerName.trim() === "") {
           this.showCustomAlert(
@@ -73,7 +80,9 @@ export default class GameApp {
     const btnStartGame = document.getElementById("btn-start-game");
     if (btnStartGame) {
       btnStartGame.onclick = () => {
-        document.getElementById("story-overlay").classList.add("hidden");
+        this.audio.ensureContextResumed();
+        const storyOverlay = document.getElementById("story-overlay");
+        if (storyOverlay) storyOverlay.classList.add("hidden");
         const opts = this.ui.getOptions();
         this.startGame(opts);
       };
@@ -109,7 +118,9 @@ export default class GameApp {
             .getElementById("btn-pause-mobile")
             .classList.remove("hidden");
 
-        document.body.requestPointerLock();
+        try {
+          document.body.requestPointerLock();
+        } catch (err) {}
         this.isActive = true;
       };
     }
@@ -120,9 +131,6 @@ export default class GameApp {
     }
   }
 
-  // ===============================================
-  // FUNGSI ALERT KUSTOM (Menggantikan window.alert)
-  // ===============================================
   showCustomAlert(title, message, onConfirm = null) {
     try {
       if (document.pointerLockElement) document.exitPointerLock();
@@ -139,7 +147,6 @@ export default class GameApp {
         if (onConfirm) onConfirm();
       };
     } else {
-      // Jika HTML lupa dipasang, jadikan bawaan browser sebagai cadangan terakhir
       alert(`${title}\n\n${message}`);
       if (onConfirm) onConfirm();
     }
@@ -159,20 +166,29 @@ export default class GameApp {
       document.getElementById("btn-pause-mobile").classList.add("hidden");
   }
 
+  cleanupPreviousSession() {
+    if (this.targetSystem) {
+      this.targetSystem.clearTargets();
+    }
+    if (this.world) {
+      this.world.dispose();
+    }
+  }
+
   startGame(opts) {
     this.audio.playGameMode(opts.theme);
 
-    this.listener = new THREE.AudioListener();
-    this.camera.add(this.listener);
-    if (this.listener.context.state === "suspended") {
-      this.listener.context.resume();
+    if (!this.listener) {
+      this.listener = new THREE.AudioListener();
+      this.camera.add(this.listener);
     }
 
-    if (this.world) {
-      while (this.world.scene.children.length > 0) {
-        this.world.scene.remove(this.world.scene.children[0]);
-      }
+    if (this.listener.context && this.listener.context.state === "suspended") {
+      this.listener.context.resume().catch(() => {});
     }
+
+    // Pembersihan scene & memory lama
+    this.cleanupPreviousSession();
 
     this.world = new World(100, opts.theme);
     this.world.scene.add(this.camera);
@@ -187,9 +203,8 @@ export default class GameApp {
       opts.questMode,
     );
 
+    this.player.reset();
     this.camera.position.set(0, 1.7, 0);
-    this.player.pitch = 0;
-    this.player.yaw = 0;
     this.camera.add(this.player.gunMesh);
 
     if (document.getElementById("btn-aim"))
@@ -197,21 +212,25 @@ export default class GameApp {
     if (document.getElementById("btn-pause-mobile"))
       document.getElementById("btn-pause-mobile").classList.remove("hidden");
 
-    // Memunculkan HUD Game
     document.body.classList.add("is-playing");
     this.isActive = true;
+    this.isGameOverProcessed = false;
     this.startTime = performance.now();
+    this.prevTime = performance.now();
+
     try {
       document.body.requestPointerLock();
     } catch (e) {}
   }
 
   shoot() {
-    if (!this.isActive) return;
+    if (!this.isActive || this.isGameOverProcessed) return;
     this.audio.playGunShot();
 
     const ray = new THREE.Raycaster();
     ray.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+
+    // Dioptimalkan: Raycast dilakukan pada objek scene
     const hits = ray.intersectObjects(this.world.scene.children, true);
 
     for (let hit of hits) {
@@ -231,7 +250,7 @@ export default class GameApp {
           let s = 1.0;
           const fade = setInterval(() => {
             s -= 0.1;
-            parent.scale.set(s, s, s);
+            if (parent && parent.scale) parent.scale.set(s, s, s);
             if (s <= 0) clearInterval(fade);
           }, 20);
 
@@ -240,10 +259,18 @@ export default class GameApp {
             this.ui.showFloatingText("+1 HP | BENAR!", "#2ecc71");
 
           const sisa = this.targetSystem.removeTarget(parent);
-          if (sisa <= 0) this.gameOver("MISI SELESAI", true);
+          if (sisa <= 0 && !this.isGameOverProcessed) {
+            this.gameOver("MISI SELESAI", true);
+          }
         } else {
-          obj.material.emissive.setHex(0xff0000);
-          setTimeout(() => obj.material.emissive.setHex(0x330000), 300);
+          if (obj.material && obj.material.emissive) {
+            obj.material.emissive.setHex(0xff0000);
+            setTimeout(() => {
+              if (obj.material && obj.material.emissive) {
+                obj.material.emissive.setHex(0x330000);
+              }
+            }, 300);
+          }
         }
         break;
       }
@@ -253,10 +280,11 @@ export default class GameApp {
   animate() {
     requestAnimationFrame(this.animate);
     const time = performance.now();
-    const delta = (time - (this.prevTime || time)) / 1000;
+    const rawDelta = (time - (this.prevTime || time)) / 1000;
+    const delta = Math.min(rawDelta, 0.1); // Capping delta time untuk kestabilan FPS
     this.prevTime = time;
 
-    if (this.isActive && this.world) {
+    if (this.isActive && this.world && !this.isGameOverProcessed) {
       const elapsed = ((time - this.startTime) / 1000).toFixed(2);
       this.ui.updateStats(elapsed, this.targetSystem.targetCount);
       this.ui.updateCompass(this.camera, this.targetSystem.targets);
@@ -268,25 +296,28 @@ export default class GameApp {
         this.targetSystem.targets,
       );
       this.targetSystem.update(delta, this.camera.position, this.player);
-
       this.particleSystem.update(delta);
 
       this.renderer.render(this.world.scene, this.camera);
 
-      if (this.targetSystem.targets.length === 0 && this.isActive) {
+      // Single Responsibility check untuk pencegahan panggilan ganda gameOver
+      if (this.targetSystem.targets.length === 0 && !this.isGameOverProcessed) {
         this.gameOver("MISI SELESAI", true);
       }
 
-      if (this.player.isDead && this.isActive) {
-        this.gameOver("DI BUNUH MONSTER!", false);
+      if (this.player.isDead && !this.isGameOverProcessed) {
+        this.gameOver("DIBUNUH MONSTER!", false);
       }
     }
   }
 
   gameOver(reason = "MISI SELESAI", isVictory = false) {
-    // Menyembunyikan HUD Game
+    if (this.isGameOverProcessed) return;
+    this.isGameOverProcessed = true;
+
     document.body.classList.remove("is-playing");
     this.isActive = false;
+
     try {
       if (document.pointerLockElement) document.exitPointerLock();
     } catch (e) {}
@@ -300,18 +331,17 @@ export default class GameApp {
 
     const elapsed = ((performance.now() - this.startTime) / 1000).toFixed(2);
 
-    // MENGGUNAKAN ALERT KUSTOM JIKA UI GAGAL DIMUAT
     if (isVictory) {
       try {
         if (this.ui.showVictoryCertificate) {
           this.ui.showVictoryCertificate(this.playerName, elapsed);
         } else {
-          throw new Error("Sertifikat");
+          throw new Error("Sertifikat Modal Error");
         }
       } catch (err) {
         this.showCustomAlert(
           "MISI SELESAI!",
-          `Ranger: ${this.playerName}\nWaktu: ${elapsed} detik\n\n(Catatan: UI Sertifikat belum terpasang di UIManager)`,
+          `Ranger: ${this.playerName}\nWaktu: ${elapsed} detik`,
           () => location.reload(),
         );
       }
@@ -320,7 +350,7 @@ export default class GameApp {
         if (this.ui.showGameOver) {
           this.ui.showGameOver(this.playerName, reason, elapsed);
         } else {
-          throw new Error("Modal Kalah");
+          throw new Error("Modal Kalah Error");
         }
       } catch (err) {
         this.showCustomAlert(

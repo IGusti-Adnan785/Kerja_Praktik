@@ -8,48 +8,76 @@ export default class TargetSystem {
     this.targets = [];
     this.targetCount = 5;
     this.obstacles = [];
-    this.audioListener = audioListener; // Ambil telinga pemain dari GameApp
+    this.audioListener = audioListener;
 
-    // Buat file suara digital (Dengungan Mengerikan)
-    // Buat file suara digital (Detak Jantung / Langkah Kaki Tegang)
     if (this.audioListener) {
-      const ctx = this.audioListener.context;
-      const bufferSize = ctx.sampleRate * 1.5; // Loop 1.5 detik
-      this.humBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = this.humBuffer.getChannelData(0);
-      
-      for (let i = 0; i < bufferSize; i++) {
-        const time = i / ctx.sampleRate; 
-        
-        // Membuat ketukan berulang setiap 0.75 detik
-        const beat = (time % 0.75) / 0.75; 
-        
-        // Decay: Suara keras di awal ketukan, lalu cepat menghilang
-        const decay = Math.max(0, 1 - beat * 6); 
-        
-        // Frekuensi sangat rendah (Bass) yang mengintimidasi + sedikit noise
-        const bass = Math.sin(time * 50 * Math.PI * 2);
-        const noise = (Math.random() - 0.5) * 0.1;
-        
-        // Gabungkan menjadi suara berdenyut
-        data[i] = (bass + noise) * decay * 1.5;
-      }
+      try {
+        const ctx = this.audioListener.context;
+        const bufferSize = ctx.sampleRate * 1.5;
+        this.humBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = this.humBuffer.getChannelData(0);
+
+        for (let i = 0; i < bufferSize; i++) {
+          const time = i / ctx.sampleRate;
+          const beat = (time % 0.75) / 0.75;
+          const decay = Math.max(0, 1 - beat * 6);
+          const bass = Math.sin(time * 50 * Math.PI * 2);
+          const noise = (Math.random() - 0.5) * 0.1;
+          data[i] = (bass + noise) * decay * 1.5;
+        }
+      } catch (e) {}
     }
   }
 
   spawnTargets(count, treePositions, targetMode, questMode) {
     this.obstacles = treePositions;
     this.clearTargets();
+
+    const filteredBank = QUESTION_BANK.filter((q) => q.type === questMode);
+    if (filteredBank.length === 0) return;
+
+    // Shuffle bank soal agar tidak ada soal duplikat jika pasokan cukup
+    const shuffledBank = [...filteredBank].sort(() => Math.random() - 0.5);
+
     this.targetCount = count;
-    for (let i = 0; i < count; i++) this.spawnSingle(targetMode, questMode);
+    for (let i = 0; i < count; i++) {
+      const problem = shuffledBank[i % shuffledBank.length];
+      this.spawnSingle(problem, targetMode);
+    }
   }
 
   clearTargets() {
-    this.targets.forEach((t) => this.scene.remove(t.mesh));
+    this.targets.forEach((t) => {
+      if (t.mesh) {
+        this.scene.remove(t.mesh);
+        this.disposeMesh(t.mesh);
+      }
+    });
     this.targets = [];
   }
 
-  // (Fungsi drawLinearGraph dan wrapText tetap dipertahankan)
+  disposeMesh(obj) {
+    if (!obj) return;
+    obj.traverse((child) => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach((m) => this.disposeMaterial(m));
+        } else {
+          this.disposeMaterial(child.material);
+        }
+      }
+    });
+  }
+
+  disposeMaterial(mat) {
+    if (!mat) return;
+    if (mat.map) mat.map.dispose();
+    if (mat.emissiveMap) mat.emissiveMap.dispose();
+    if (mat.normalMap) mat.normalMap.dispose();
+    mat.dispose();
+  }
+
   drawLinearGraph(ctx, w, h, m, c) {
     const centerX = w / 2;
     const centerY = h / 2;
@@ -58,10 +86,10 @@ export default class TargetSystem {
 
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, w, h);
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 2;
     ctx.strokeStyle = "#cccccc";
     ctx.fillStyle = "#000000";
-    ctx.font = "bold 60px Arial";
+    ctx.font = "bold 20px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
 
@@ -75,7 +103,7 @@ export default class TargetSystem {
       ctx.moveTo(x, 0);
       ctx.lineTo(x, h);
       ctx.stroke();
-      ctx.fillText(i, x, centerY + 20);
+      ctx.fillText(i, x, centerY + 8);
     }
 
     ctx.textAlign = "right";
@@ -87,10 +115,10 @@ export default class TargetSystem {
       ctx.moveTo(0, y);
       ctx.lineTo(w, y);
       ctx.stroke();
-      ctx.fillText(j, centerX - 20, y);
+      ctx.fillText(j, centerX - 8, y);
     }
 
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 4;
     ctx.strokeStyle = "#000000";
     ctx.beginPath();
     ctx.moveTo(0, centerY);
@@ -100,18 +128,18 @@ export default class TargetSystem {
     ctx.stroke();
 
     ctx.fillStyle = "#000";
-    ctx.font = "bold 80px Arial";
+    ctx.font = "bold 24px Arial";
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
-    ctx.fillText("X", w - 40, centerY - 40);
+    ctx.fillText("X", w - 15, centerY - 15);
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText("Y", centerX + 40, 40);
+    ctx.fillText("Y", centerX + 15, 15);
     ctx.textAlign = "right";
     ctx.textBaseline = "top";
-    ctx.fillText("0", centerX - 20, centerY + 20);
+    ctx.fillText("0", centerX - 8, centerY + 8);
 
-    ctx.lineWidth = 12;
+    ctx.lineWidth = 5;
     ctx.strokeStyle = "#ff0000";
     ctx.beginPath();
     const xStart = -xLimit - 5;
@@ -134,8 +162,7 @@ export default class TargetSystem {
     for (let n = 0; n < words.length; n++) {
       const testLine = line + words[n] + " ";
       const metrics = ctx.measureText(testLine);
-      const testWidth = metrics.width;
-      if (testWidth > maxWidth && n > 0) {
+      if (metrics.width > maxWidth && n > 0) {
         ctx.fillText(line, x, y);
         line = words[n] + " ";
         y += lineHeight;
@@ -182,35 +209,38 @@ export default class TargetSystem {
     armL.name = "armL";
     armL.castShadow = true;
     grp.add(armL);
+
     const armR = new THREE.Mesh(armGeo, skinMat);
     armR.position.set(0.7, 1.3, 0);
     armR.name = "armR";
     armR.castShadow = true;
     grp.add(armR);
 
+    // Opsi Jawaban (Canvas 256x64 cukup untuk memori hemat)
     let shuffledOpts = [...problem.opts].sort(() => Math.random() - 0.5);
     shuffledOpts.forEach((val, i) => {
       const c = document.createElement("canvas");
-      c.width = 512;
-      c.height = 128;
+      c.width = 256;
+      c.height = 64;
       const x = c.getContext("2d");
       x.fillStyle = "rgba(20, 0, 0, 0.9)";
-      x.fillRect(0, 0, 512, 128);
+      x.fillRect(0, 0, 256, 64);
       x.strokeStyle = "#ff0000";
-      x.lineWidth = 10;
-      x.strokeRect(5, 5, 502, 118);
-      let fontSize = 80;
+      x.lineWidth = 6;
+      x.strokeRect(3, 3, 250, 58);
+      let fontSize = 36;
       x.font = `bold ${fontSize}px Arial`;
-      while (x.measureText(val).width > 450 && fontSize > 20) {
-        fontSize -= 5;
+      while (x.measureText(val).width > 220 && fontSize > 14) {
+        fontSize -= 2;
         x.font = `bold ${fontSize}px Arial`;
       }
       x.textAlign = "center";
       x.textBaseline = "middle";
       x.fillStyle = "#ffffff";
-      x.fillText(val, 256, 64);
+      x.fillText(val, 128, 32);
+
       const tex = new THREE.CanvasTexture(c);
-      tex.anisotropy = 16;
+      tex.minFilter = THREE.LinearFilter;
       const m = new THREE.Mesh(
         new THREE.BoxGeometry(1.2, 0.35, 0.05),
         new THREE.MeshStandardMaterial({
@@ -224,32 +254,35 @@ export default class TargetSystem {
       grp.add(m);
     });
 
+    // Papan Soal Utama (Dioptimalkan dari 4096x2048 ke 1024x512 = Hemat VRAM 16x!)
     const cQ = document.createElement("canvas");
-    const W = 4096;
-    const H = 2048;
+    const W = 1024;
+    const H = 512;
     cQ.width = W;
     cQ.height = H;
     const xQ = cQ.getContext("2d");
+
     if (problem.type === "GRAPH") {
       this.drawLinearGraph(xQ, W, H, problem.params.m, problem.params.c);
-      xQ.font = "bold 80px Arial";
+      xQ.font = "bold 28px Arial";
       xQ.fillStyle = "#000";
       xQ.textAlign = "left";
-      xQ.fillText(problem.q, 40, 100);
+      xQ.fillText(problem.q, 20, 30);
     } else {
       xQ.fillStyle = "#1a1a1a";
       xQ.fillRect(0, 0, W, H);
       xQ.strokeStyle = "#ff5500";
-      xQ.lineWidth = 20;
-      xQ.strokeRect(10, 10, W - 20, H - 20);
-      xQ.font = "bold 200px Courier New";
+      xQ.lineWidth = 10;
+      xQ.strokeRect(5, 5, W - 10, H - 10);
+      xQ.font = "bold 52px Courier New";
       xQ.textAlign = "center";
       xQ.textBaseline = "middle";
       xQ.fillStyle = "#ffaa00";
-      this.wrapText(xQ, problem.q, W / 2, H / 2 - 160, W - 320, 280);
+      this.wrapText(xQ, problem.q, W / 2, H / 2 - 40, W - 80, 60);
     }
+
     const texQ = new THREE.CanvasTexture(cQ);
-    texQ.anisotropy = 16;
+    texQ.minFilter = THREE.LinearFilter;
     const sprMat = new THREE.SpriteMaterial({ map: texQ });
     const spr = new THREE.Sprite(sprMat);
     spr.scale.set(4, 2, 1);
@@ -259,10 +292,7 @@ export default class TargetSystem {
     return grp;
   }
 
-  spawnSingle(targetMode, questMode) {
-    const filteredBank = QUESTION_BANK.filter((q) => q.type === questMode);
-    const problem =
-      filteredBank[Math.floor(Math.random() * filteredBank.length)];
+  spawnSingle(problem, targetMode) {
     const grp = this.createEnemyMesh(problem);
 
     const bound = 40;
@@ -299,17 +329,18 @@ export default class TargetSystem {
     grp.lookAt(0, 0, 0);
     this.scene.add(grp);
 
-    // --- FITUR BARU: PASANG SPEAKER 3D DI BADAN MONSTER ---
-    if (this.audioListener) {
-      const sound = new THREE.PositionalAudio(this.audioListener);
-      sound.setBuffer(this.humBuffer);
-      sound.setRefDistance(3); // Jarak suara terdengar keras
-      sound.setLoop(true);
-      sound.setRolloffFactor(2);
-      sound.setVolume(1.0);
-      sound.setMaxDistance(30);
-      sound.play();
-      grp.add(sound); // Tempelkan di badan monster
+    if (this.audioListener && this.humBuffer) {
+      try {
+        const sound = new THREE.PositionalAudio(this.audioListener);
+        sound.setBuffer(this.humBuffer);
+        sound.setRefDistance(3);
+        sound.setLoop(true);
+        sound.setRolloffFactor(2);
+        sound.setVolume(0.8);
+        sound.setMaxDistance(30);
+        sound.play();
+        grp.add(sound);
+      } catch (e) {}
     }
 
     this.targets.push({
@@ -324,26 +355,31 @@ export default class TargetSystem {
       baseY: grp.position.y,
       aiState: "WANDER",
       attackCooldown: 0,
+      losCache: false,
+      losTimer: Math.random() * 0.2, // Staggered initial timer to avoid synchronized CPU spikes
     });
   }
 
   hasLineOfSight(ex, ez, px, pz) {
-    const dist = Math.hypot(px - ex, pz - ez);
-    if (dist > 35) return false; // Jarak pandang maksimal 35 meter
+    const dxFull = px - ex;
+    const dzFull = pz - ez;
+    const distSq = dxFull * dxFull + dzFull * dzFull;
 
-    const steps = Math.ceil(dist / 1.0); // Cek setiap 1 meter
-    const dx = (px - ex) / steps;
-    const dz = (pz - ez) / steps;
+    if (distSq > 35 * 35) return false;
+    const dist = Math.sqrt(distSq);
+
+    const steps = Math.ceil(dist / 1.5);
+    const dx = dxFull / steps;
+    const dz = dzFull / steps;
 
     for (let i = 1; i < steps; i++) {
       let cx = ex + dx * i;
       let cz = ez + dz * i;
-      // Jika sinar mengenai rintangan di tengah jalan, pandangan terhalang
       for (let obs of this.obstacles) {
-        if (this.checkCollision(cx, cz, 0.1, obs)) return false;
+        if (this.checkCollision(cx, cz, 0.2, obs)) return false;
       }
     }
-    return true; // Pandangan bersih tanpa halangan!
+    return true;
   }
 
   checkCollision(px, pz, radius, obs) {
@@ -360,7 +396,8 @@ export default class TargetSystem {
     }
   }
 
-  update(delta, playerPos, playerObj) {
+  update(rawDelta, playerPos, playerObj) {
+    const delta = Math.min(rawDelta, 0.1);
     const L = this.arenaSize - 5;
     const time = performance.now() * 0.005;
     const enemyRadius = 1.2;
@@ -369,55 +406,57 @@ export default class TargetSystem {
     this.targets.forEach((t, index) => {
       t.mesh.position.y = t.baseY + Math.sin(time + index) * 0.15;
 
-      // Kurangi cooldown serangan setiap frame
       if (t.attackCooldown > 0) t.attackCooldown -= delta;
 
       if (t.mode === "MOVING") {
         const ePos = t.mesh.position;
-        const distToPlayer = Math.hypot(
-          playerPos.x - ePos.x,
-          playerPos.z - ePos.z,
-        );
 
-        // --- OTAK AI (STATE MACHINE) ---
-        if (this.hasLineOfSight(ePos.x, ePos.z, playerPos.x, playerPos.z)) {
-          // Pemain terlihat!
+        // Throttled / Cached Line of Sight check (Setiap 0.1 detik)
+        t.losTimer -= delta;
+        if (t.losTimer <= 0) {
+          t.losTimer = 0.1; // Cek 10x seminggu alih-alih 60x detik
+          t.losCache = this.hasLineOfSight(
+            ePos.x,
+            ePos.z,
+            playerPos.x,
+            playerPos.z,
+          );
+        }
+
+        const dx = playerPos.x - ePos.x;
+        const dz = playerPos.z - ePos.z;
+        const distToPlayer = Math.hypot(dx, dz);
+
+        if (t.losCache) {
           if (distToPlayer <= enemyRadius + playerRadius + 0.5) {
-            // Jarak dekat: SERANG!
             t.aiState = "ATTACK";
             if (t.attackCooldown <= 0) {
-              const isDead = playerObj.takeDamage(1);
-              t.attackCooldown = 2.0; // Cooldown 2 detik sebelum serang lagi
+              playerObj.takeDamage(1);
+              t.attackCooldown = 2.0;
             }
           } else {
-            // Jarak jauh: KEJAR!
             t.aiState = "CHASE";
-            const dx = playerPos.x - ePos.x;
-            const dz = playerPos.z - ePos.z;
-            t.dir.set(dx / distToPlayer, 0, dz / distToPlayer); // Ubah arah ke pemain
+            if (distToPlayer > 0.001) {
+              t.dir.set(dx / distToPlayer, 0, dz / distToPlayer);
+            }
           }
         } else {
-          // Pemain tersembunyi di balik tembok/pohon
           t.aiState = "WANDER";
         }
 
-        // Tentukan Kecepatan: Lari lebih cepat saat mengejar
         const currentSpeed =
           t.aiState === "CHASE" ? t.baseSpeed * 2.5 : t.baseSpeed;
 
-        // Jika sedang menyerang, berhenti berjalan sesaat
         if (t.aiState !== "ATTACK") {
           const nextX = ePos.x + t.dir.x * currentSpeed * delta;
           const nextZ = ePos.z + t.dir.z * currentSpeed * delta;
 
           let isColliding = false;
 
-          if (!isColliding) {
-            for (let obs of this.obstacles) {
-              if (this.checkCollision(nextX, nextZ, enemyRadius, obs)) {
-                isColliding = true;
-                break;
-              }
+          for (let obs of this.obstacles) {
+            if (this.checkCollision(nextX, nextZ, enemyRadius, obs)) {
+              isColliding = true;
+              break;
             }
           }
 
@@ -429,7 +468,7 @@ export default class TargetSystem {
                     nextX - other.mesh.position.x,
                     nextZ - other.mesh.position.z,
                   ) <
-                  enemyRadius * 2.5
+                  enemyRadius * 2.2
                 ) {
                   isColliding = true;
                   break;
@@ -438,7 +477,6 @@ export default class TargetSystem {
             }
           }
 
-          // Jika mode Wander dan nabrak, putar arah acak
           if (isColliding && t.aiState === "WANDER") {
             t.dir.x += Math.random() - 0.5;
             t.dir.z += Math.random() - 0.5;
@@ -458,12 +496,11 @@ export default class TargetSystem {
         if (Math.abs(t.mesh.position.x) > L) t.dir.x *= -1;
         if (Math.abs(t.mesh.position.z) > L) t.dir.z *= -1;
 
-        // Animasi: Mengamuk saat menyerang, berayun cepat saat lari
         const armL = t.mesh.getObjectByName("armL");
         const armR = t.mesh.getObjectByName("armR");
         if (armL && armR) {
           if (t.aiState === "ATTACK") {
-            armL.rotation.x = -Math.PI / 2 + Math.sin(time * 10) * 0.5; // Tangan ke atas memukul
+            armL.rotation.x = -Math.PI / 2 + Math.sin(time * 10) * 0.5;
             armR.rotation.x = -Math.PI / 2 + Math.sin(time * 10) * 0.5;
           } else {
             const animSpeed = t.aiState === "CHASE" ? 4 : 2;
@@ -477,6 +514,7 @@ export default class TargetSystem {
 
   removeTarget(mesh) {
     this.scene.remove(mesh);
+    this.disposeMesh(mesh);
     this.targets = this.targets.filter((t) => t.mesh !== mesh);
     this.targetCount--;
     return this.targetCount;
